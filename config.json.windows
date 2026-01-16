@@ -1,0 +1,14 @@
+{
+  "tools": {
+    "perl": "C:\\Strawberry\\perl\\bin\\perl.exe",
+    "nikto": "C:\\nikto\\program\\nikto.pl",
+    "nmap_scanner": "nmap_scanner.exe",
+
+    "nmap_processor": "nmap_processor.exe",
+    "searchsploit_scanner": "searchsploit_scanner.exe"
+  },
+  "paths": {
+    "perl5lib": "C:\\Strawberry\\perl\\site\\lib",
+    "openssl_dll": "C:\\Strawberry\\c\\bin"
+  }
+}

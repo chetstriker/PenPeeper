@@ -1,0 +1,144 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:penpeeper/services/config_service.dart';
+import 'package:penpeeper/services/app_paths_service.dart';
+import 'package:penpeeper/repositories/findings_data_repository.dart';
+
+class WhatwebScanService {
+  final FindingsDataRepository _findingsRepo = FindingsDataRepository();
+
+  Future<String> runWhatwebScan(String target) async {
+    final tempPath = AppPathsService().getTempScanPath('temp_whatweb', 'json');
+    final tempFile = File(tempPath);
+    
+    try {
+      String command;
+      List<String> args;
+      
+      if (ConfigService.isMacOS) {
+        final homeDir = Platform.environment['HOME'] ?? '';
+        command = '$homeDir/.local/bin/whatweb';
+        args = ['-v', '--log-json', tempFile.path, target];
+      } else if (ConfigService.isLinux) {
+        command = 'whatweb';
+        args = ['-v', '--log-json', tempFile.path, target];
+      } else {
+        command = 'wsl.exe';
+        args = ['whatweb', '-v', '--log-json', tempFile.path, target];
+      }
+      
+      final result = await Process.run(
+        command,
+        args,
+        workingDirectory: Directory.current.path,
+      );
+      
+      String jsonContent = '';
+      if (await tempFile.exists()) {
+        jsonContent = await tempFile.readAsString();
+      }
+      
+      try {
+        await tempFile.delete();
+      } catch (e) {
+        debugPrint('Warning: Could not delete temp file: $e');
+      }
+      
+      if (result.exitCode != 0 && jsonContent.isEmpty) {
+        throw Exception('WhatWeb scan failed: ${result.stderr}');
+      }
+      
+      return jsonContent.isNotEmpty ? jsonContent : result.stdout;
+    } catch (e) {
+      try {
+        await tempFile.delete();
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  Future<void> parseAndStoreResults(int deviceId, String whatwebData) async {
+    try {
+      await _findingsRepo.deleteWhatwebFindings(deviceId);
+
+      // Collect all findings first, then batch insert
+      final findings = <String>[];
+
+      final lines = whatwebData.split('\n');
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty &&
+            trimmed != '[' &&
+            trimmed != ']' &&
+            !trimmed.startsWith('{') &&
+            !trimmed.startsWith('}') &&
+            trimmed.length > 2) {
+
+          String finding = trimmed;
+          if (finding.contains('http')) {
+            finding = finding.replaceAll(RegExp(r'\s+'), ' ');
+            findings.add(finding);
+          }
+        }
+      }
+
+      try {
+        final jsonLines = whatwebData.split('\n').where((line) => line.trim().startsWith('{')).toList();
+        for (final jsonLine in jsonLines) {
+          final data = json.decode(jsonLine) as Map<String, dynamic>;
+          final target = data['target']?.toString() ?? '';
+          final plugins = data['plugins'] as Map<String, dynamic>? ?? {};
+
+          if (target.isNotEmpty && plugins.isNotEmpty) {
+            final pluginFindings = <String>[];
+            plugins.forEach((key, value) {
+              if (value is Map && value.isNotEmpty) {
+                pluginFindings.add('$key: ${value.toString()}');
+              }
+            });
+
+            if (pluginFindings.isNotEmpty) {
+              final finding = '$target - ${pluginFindings.join(', ')}';
+              findings.add(finding);
+            }
+          }
+        }
+      } catch (e) {
+        // JSON parsing failed, continue with text processing
+      }
+
+      // Batch insert all findings in a single transaction
+      if (findings.isNotEmpty) {
+        await _findingsRepo.batchInsertWhatwebFindings(deviceId, findings);
+      }
+    } catch (e) {
+      debugPrint('Failed to process WhatWeb results: $e');
+    }
+  }
+
+  Future<List<String>> parseNmapForHttpPorts(String nmapXml, String ipAddress) async {
+    final httpPorts = <String>[];
+    
+    try {
+      final portRegex = RegExp(r'<port protocol="tcp" portid="(\d+)">.*?<service name="([^"]*?)".*?</port>', dotAll: true);
+      final matches = portRegex.allMatches(nmapXml);
+      
+      for (final match in matches) {
+        final port = match.group(1)!;
+        final service = match.group(2)?.toLowerCase() ?? '';
+        
+        if (port == '80' || port == '443' || 
+            service.contains('http') || 
+            service == 'ms-wbt-server') {
+          final protocol = (port == '443' || service.contains('https')) ? 'https' : 'http';
+          httpPorts.add('$protocol://$ipAddress:$port');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to parse nmap XML for HTTP ports: $e');
+    }
+    
+    return httpPorts;
+  }
+}

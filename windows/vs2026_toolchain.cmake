@@ -1,0 +1,3 @@
+# Force Visual Studio 2022 generator
+set(CMAKE_GENERATOR "Visual Studio 17 2022" CACHE STRING "" FORCE)
+set(CMAKE_GENERATOR_PLATFORM "x64" CACHE STRING "" FORCE)

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=PenPeeper
+GenericName=Security Testing Tool
+Comment=Cross-platform security and penetration testing tool
+Exec=/opt/penpeeper/penpeeper
+Icon=penpeeper
+Terminal=false
+Categories=Network;Security;System;
+Keywords=security;pentest;nmap;vulnerability;scanner;report;reporting;audit;
+StartupNotify=true
+StartupWMClass=penpeeper

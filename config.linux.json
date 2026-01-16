@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "perl": "perl",
+    "nikto": "nikto",
+    "nmap_scanner": "./nmap_scanner",
+
+    "nmap_processor": "./nmap_processor",
+    "searchsploit_scanner": "./searchsploit_scanner"
+  }
+}

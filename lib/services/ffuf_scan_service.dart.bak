@@ -1,0 +1,129 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:penpeeper/services/config_service.dart';
+import 'package:penpeeper/services/app_paths_service.dart';
+import 'package:penpeeper/repositories/findings_data_repository.dart';
+
+class FfufScanService {
+  final FindingsDataRepository _findingsRepo = FindingsDataRepository();
+
+  Future<String> runFfufScan(String ip, String port) async {
+    final tempFile = AppPathsService().getTempScanPath('temp_ffuf_${ip.replaceAll('.', '_')}_$port', 'json');
+    final protocol = (port == '443' || port == '8443') ? 'https' : 'http';
+    final url = '$protocol://$ip:$port/FUZZ';
+    
+    try {
+      final homeDir = Platform.environment['HOME'] ?? '';
+      final wordlistPath = ConfigService.isMacOS 
+          ? '$homeDir/.local/share/seclists/Discovery/Web-Content/raft-large-files.txt'
+          : '/usr/share/seclists/Discovery/Web-Content/raft-large-files.txt';
+      
+      final command = (ConfigService.isLinux || ConfigService.isMacOS) ? 'ffuf' : 'wsl.exe';
+      final args = (ConfigService.isLinux || ConfigService.isMacOS)
+          ? [
+              '-H', 'User-Agent: PENTEST',
+              '-c',
+              '-w', '$wordlistPath:FUZZ',
+              '-ac',
+              '-maxtime-job', '60',
+              '-recursion',
+              '-recursion-depth', '2',
+              '-u', url,
+              '-o', tempFile,
+              '-of', 'json'
+            ]
+          : [
+              'ffuf',
+              '-H', 'User-Agent: PENTEST',
+              '-c',
+              '-w', '$wordlistPath:FUZZ',
+              '-ac',
+              '-maxtime-job', '60',
+              '-recursion',
+              '-recursion-depth', '2',
+              '-u', url,
+              '-o', tempFile,
+              '-of', 'json'
+            ];
+      
+      final result = await Process.run(
+        command,
+        args,
+        workingDirectory: Directory.current.path,
+      );
+      
+      String jsonContent = '';
+      final outputFile = File(tempFile);
+      if (await outputFile.exists()) {
+        jsonContent = await outputFile.readAsString();
+        try {
+          await outputFile.delete();
+        } catch (e) {
+          debugPrint('Warning: Could not delete temp file: $e');
+        }
+      }
+      
+      if (result.exitCode != 0 && jsonContent.isEmpty) {
+        throw Exception('FFUF scan failed: ${result.stderr}');
+      }
+      
+      return jsonContent.isNotEmpty ? jsonContent : result.stdout;
+    } catch (e) {
+      try {
+        final outputFile = File(tempFile);
+        if (await outputFile.exists()) {
+          await outputFile.delete();
+        }
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  Future<void> parseAndStoreResults(int deviceId, String ffufData) async {
+    try {
+      await _findingsRepo.deleteFfufFindings(deviceId);
+
+      // Collect all findings first, then batch insert
+      final findings = <Map<String, dynamic>>[];
+
+      final lines = ffufData.split('\n');
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            final data = json.decode(trimmed) as Map<String, dynamic>;
+            final results = data['results'] as List?;
+
+            if (results != null && results.isNotEmpty) {
+              for (final result in results) {
+                if (result is Map<String, dynamic>) {
+                  final url = result['url']?.toString() ?? '';
+                  final status = result['status'] as int? ?? 0;
+                  final words = result['words'] as int? ?? 0;
+
+                  if (url.isNotEmpty && status > 0) {
+                    findings.add({
+                      'url': url,
+                      'status': status,
+                      'words': words,
+                    });
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Skip invalid JSON lines
+          }
+        }
+      }
+
+      // Batch insert all findings in a single transaction
+      if (findings.isNotEmpty) {
+        await _findingsRepo.batchInsertFfufFindings(deviceId, findings);
+      }
+    } catch (e) {
+      debugPrint('Failed to process FFUF results: $e');
+    }
+  }
+}

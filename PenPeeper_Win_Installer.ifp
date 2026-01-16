@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<InstallForgeProject>
+  <Metadata productVersion="1.6.0" projectFileVersion="2.0"/>
+  <ProductInformation>
+    <Name>PenPeeper</Name>
+    <Version>1.0</Version>
+    <CompanyName>PenPeeper</CompanyName>
+    <WebURI>https://penpeeper.com</WebURI>
+  </ProductInformation>
+  <InstallerConfiguration>
+    <Prerequisites>
+      <OperatingSystem check="false">
+        <WindowsXP>false</WindowsXP>
+        <WindowsServer2003>true</WindowsServer2003>
+        <WindowsVista>true</WindowsVista>
+        <WindowsServer2008>true</WindowsServer2008>
+        <Windows7>true</Windows7>
+        <Windows8>true</Windows8>
+        <Windows10>true</Windows10>
+        <WindowsServer2016>true</WindowsServer2016>
+        <WindowsServer2019>true</WindowsServer2019>
+        <WindowsServer2022>true</WindowsServer2022>
+        <Windows11>true</Windows11>
+        <WindowsServer2025>false</WindowsServer2025>
+      </OperatingSystem>
+    </Prerequisites>
+    <UserInterface>
+      <WizardImage filePath="&lt;main&gt;"/>
+      <HeaderImage filePath="&lt;main&gt;"/>
+      <Label isEnabled="true"/>
+      <VisualStyle isEnabled="true"/>
+    </UserInterface>
+    <InstallationFiles defaultInstallationPath="&lt;LocalApplicationData&gt;\&lt;AppName&gt;\" isDefaultInstallationPathAlterable ="true">
+      <InstallationFile size="N/A" type="[Folder]">C:\Temp\PenPeeper_Staging\Themes\</InstallationFile>
+      <InstallationFile size="N/A" type="[Folder]">C:\Temp\PenPeeper_Staging\IconLocation\</InstallationFile>
+      <InstallationFile size="N/A" type="[Folder]">C:\Temp\PenPeeper_Staging\data\</InstallationFile>
+      <InstallationFile size="N/A" type="[Folder]">C:\Temp\PenPeeper_Staging\build\</InstallationFile>
+      <InstallationFile size="109 KB" type="dll">C:\Temp\PenPeeper_Staging\file_selector_windows_plugin.dll</InstallationFile>
+      <InstallationFile size="18.2 MB" type="dll">C:\Temp\PenPeeper_Staging\flutter_windows.dll</InstallationFile>
+      <InstallationFile size="86.5 KB" type="dll">C:\Temp\PenPeeper_Staging\irondash_engine_context_plugin.dll</InstallationFile>
+      <InstallationFile size="4.5 MB" type="dll">C:\Temp\PenPeeper_Staging\pdfium.dll</InstallationFile>
+      <InstallationFile size="61 KB" type="exe">C:\Temp\PenPeeper_Staging\penpeeper.exe</InstallationFile>
+      <InstallationFile size="1.6 MB" type="dll">C:\Temp\PenPeeper_Staging\sqlite3.x64.windows.dll</InstallationFile>
+      <InstallationFile size="135.5 KB" type="dll">C:\Temp\PenPeeper_Staging\printing_plugin.dll</InstallationFile>
+      <InstallationFile size="811 KB" type="dll">C:\Temp\PenPeeper_Staging\super_native_extensions.dll</InstallationFile>
+      <InstallationFile size="44 KB" type="dll">C:\Temp\PenPeeper_Staging\super_native_extensions_plugin.dll</InstallationFile>
+      <InstallationFile size="96 KB" type="dll">C:\Temp\PenPeeper_Staging\url_launcher_windows_plugin.dll</InstallationFile>
+      <InstallationFile size="14.7 KB" type="ico">C:\Temp\PenPeeper_Staging\favicon.ico</InstallationFile>
+      <InstallationFile size="609 KB" type="ico">C:\Temp\PenPeeper_Staging\risk.png</InstallationFile>
+    </InstallationFiles>
+    <Languages/>
+    <Variables/>
+    <Commands/>
+    <Registry>
+      <RegistryKey root="HKCU" key="Software\Microsoft\Windows\CurrentVersion\Uninstall\PenPeeper" name="DisplayName" type="string">PenPeeper</RegistryKey>
+
+      <RegistryKey root="HKCU" key="Software\Microsoft\Windows\CurrentVersion\Uninstall\PenPeeper" name="UninstallString" type="string">"&lt;InstallPath&gt;\Uninstall.exe"</RegistryKey>
+
+      <RegistryKey root="HKCU" key="Software\Microsoft\Windows\CurrentVersion\Uninstall\PenPeeper" name="DisplayIcon" type="string">"&lt;InstallPath&gt;\favicon.ico"</RegistryKey>
+
+      <RegistryKey root="HKCU" key="Software\Microsoft\Windows\CurrentVersion\Uninstall\PenPeeper" name="DisplayVersion" type="string">1.0</RegistryKey>
+      <RegistryKey root="HKCU" key="Software\Microsoft\Windows\CurrentVersion\Uninstall\PenPeeper" name="Publisher" type="string">PenPeeper</RegistryKey>
+    </Registry>
+    <Shortcuts defaultPath="&lt;Company&gt;\&lt;AppName&gt;\" isDefaultPathAlterable="false" isCreateStartmenuShortcutsForAllUsers="false" isCreateDesktopShortcutsForAllUsers="false">
+      <Shortcut destination="Desktop" name="PenPeeper" targetFile="&lt;InstallPath&gt;\penpeeper.exe" commandLineArguments="" iconFilePath="&lt;InstallPath&gt;\favicon.ico" iconIndex="0"/>
+      <Shortcut destination="Startmenu" name="PenPeeper" targetFile="&lt;InstallPath&gt;\penpeeper.exe" commandLineArguments="" iconFilePath="&lt;InstallPath&gt;\favicon.ico" iconIndex="0"/>
+    </Shortcuts>
+    <Serials isDialogEnabled="false" count="1000" mask ="#####-#####-#####-#####"/>
+    <SplashScreen isDialogEnabled="false" delayTime="2">
+      <Image filePath=""/>
+      <Sound isEnabled="false" filePath=""/>
+    </SplashScreen>
+    <License isDialogEnabled="false">
+      <Data>e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcZGVmZjBcbm91aWNvbXBhdFxkZWZsYW5nMTAzM3tcZm9udHRibHtcZjBcZm5pbCBBcmlhbDt9fQ0Ke1wqXGdlbmVyYXRvciBSaWNoZWQyMCAxMC4wLjI2MTAwfVx2aWV3a2luZDRcdWMxIA0KXHBhcmRcZjBcZnMyMFxwYXINCn0NCgA=</Data>
+    </License>
+    <Finish isRebootMachineEnabled="false">
+      <Program executableFilePath="&lt;InstallPath&gt;\" isLaunchEnabled="false" arguments=""/>
+    </Finish>
+  </InstallerConfiguration>
+  <UninstallerConfiguration isPackaged="true">
+    <UninstallerExecutableFileName>Uninstall.exe</UninstallerExecutableFileName>
+    <OpenWebURIAfterUninstallation isEnabled="false">https://</OpenWebURIAfterUninstallation>
+    <CustomDisplayIcon isEnabled="false" iconFilePath="&lt;InstallPath&gt;\"/>
+  </UninstallerConfiguration>
+  <VisualUpdateConfiguration isPackaged="false">
+    <ProductName>&lt;AppName&gt;</ProductName>
+    <ProductVersion>&lt;AppVersion&gt;</ProductVersion>
+    <Language>0</Language>
+    <UpdateScriptURIs>
+      <MainURI>https://</MainURI>
+      <FirstMirrorURI>https://</FirstMirrorURI>
+      <SecondMirrorURI>https://</SecondMirrorURI>
+    </UpdateScriptURIs>
+    <updateExecutableFileName>Update</updateExecutableFileName>
+    <proEditionLicenseKey/>
+    <Program executableFilePath="" isLaunchEnabled="false" isTerminationEnabled="false"/>
+  </VisualUpdateConfiguration>
+  <BuildConfiguration>
+    <SetupFilePath>Output\PenPeeper_Setup.exe</SetupFilePath>
+    <SetupIconPath>C:\Temp\PenPeeper_Staging\favicon.ico</SetupIconPath>
+    <UninstallerIconPath>C:\Temp\PenPeeper_Staging\favicon.ico</UninstallerIconPath>
+    <Compression method="0" level="2"/>
+    <CodeSigning isEnabled="false" signToolCommandLine="/n &quot;Subject&quot; /tr http://timestamp.digicert.com /td sha256 /fd sha256 &quot;&lt;ExecutableFilePath&gt;&quot;"/>
+  </BuildConfiguration>
+</InstallForgeProject>
