@@ -81,7 +81,12 @@ Start by adding your scope.
 Contributions, issues, and feature requests are welcome!
 
 ## 📝 License
-[Custom Non-Commercial Software License](License.md)
+[License: Apache 2.0 with Commons Clause](License.md)
+**What this means:**
+- ✅ You can use this for free for personal or professional work.
+- ✅ You can modify the code and share those modifications for free.
+- ❌ You **cannot** sell this software, or a modified version of it, without explicit permission.
+- ❌ You **cannot** host this as a paid service (SaaS).
 
 ### brand icons
 ### [Brand icons created by Pixel perfect - Flaticon](https://www.flaticon.com/free-icons/brand)
