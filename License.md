@@ -1,57 +1,31 @@
-# Custom Non-Commercial Software License
+# License: Apache 2.0 with Commons Clause
 
-**Version 1.0**
+**Copyright © 2026 Jason Stover / PenPeeper**
 
-Copyright © 2026 Jason Stover / PenPeeper  
-All rights reserved.
+---
 
-## 1. Grant of License (Non-Commercial Use)
+### **The Commons Clause**
+**Condition:** The Software is provided to you by the Licensor under the License, as defined below, subject to the condition in this Commons Clause Section 1.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use, copy, modify, and distribute the Software solely for:
+**1. Definition of "Sell":**
+For purposes of this Clause, "Sell" means practicing any or all of the rights granted to you under the License to provide to third parties, for a fee or other charge (e.g. a subscription fee), a product or service whose value derives, entirely or substantially, from the functionality of the Software. Any person or entity that has a license to use the Software may use the Software internally for their own business purposes (including providing their own products or services), but may not Sell the Software.
 
-- Personal use
-- Educational use
-- Research use
-- Other non-commercial purposes
+**2. Restriction:**
+The License does not grant you the right to Sell the Software. This restriction applies to the Software as a whole and to any portion of the Software. 
 
-Subject to the conditions below.
+---
 
-## 2. Attribution
+### **The Apache License, Version 2.0**
 
-Any use or distribution of the Software, whether modified or unmodified, must include:
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
 
-- This license text
-- The original copyright notice
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-## 3. Prohibited Commercial Use
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an **"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND**, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-The Software may NOT be used, directly or indirectly, for commercial purposes without prior written permission from the copyright holder.
-
-Commercial purposes include, but are not limited to:
-
-- Selling, licensing, or sublicensing the Software
-- Including the Software in a product or service that is sold or monetized
-- Using the Software in a paid SaaS, hosted service, or subscription offering
-- Using the Software internally within a for-profit business
-- Consulting, support, or services where the Software provides value to a paying client
-
-## 4. Commercial Licensing
-
-Commercial use of the Software requires a separate commercial license.
-
-To obtain a commercial license, contact: **penpeeper.com**
-
-The copyright holder reserves the right to:
-
-- Set commercial licensing terms
-- Charge licensing fees
-- Offer alternative or dual licenses
-
-## 5. Derivative Works
-
-You may modify the Software for non-commercial purposes.
-
-Any derivative works must:
-
-- Be distributed under this same license
-- Remain non-commercial unless a commercial license is obtained
+#### **Summary of Permissions (Subject to the Clause above):**
+* **Commercial Use:** Permitted for internal business operations and use by employees.
+* **Modification:** You may modify the source code for your own use.
+* **Distribution:** You may distribute the code, provided you include this license and copyright notice.
+* **Sublicensing:** Permitted for non-commercial purposes.
+* **Liability & Warranty:** This software is provided "as is" with no warranty. The author is not liable for damages.
