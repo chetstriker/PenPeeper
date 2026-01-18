@@ -8,6 +8,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class FindingsRepository extends BaseRepository {
   final _dbConnection = DatabaseConnection();
+
+  /// Empty quill document representation - treat as empty/missing for completion checks
+  static const String _quillEmptyValue = '[{"insert":"\\n"}]';
+
   Future<int> insertFlaggedFinding(
     int deviceId,
     String deviceName,
@@ -304,22 +308,22 @@ class FindingsRepository extends BaseRepository {
     final db = await _dbConnection.database;
     return await db.rawQuery(
       '''
-      SELECT ff.*, 
+      SELECT ff.*,
              CASE WHEN ff.device_id = 0 THEN NULL ELSE d.icon_type END as icon_type,
              ff.device_id
       FROM flagged_findings ff
       LEFT JOIN devices d ON ff.device_id = d.id AND ff.device_id != 0
       LEFT JOIN vulnerability_classifications vc ON ff.id = vc.finding_id
       WHERE ((ff.device_id = 0 AND ff.project_id = ?) OR (d.project_id = ?))
-        AND ff.evidence IS NOT NULL AND ff.evidence != ''
-        AND ff.recommendation IS NOT NULL AND ff.recommendation != ''
+        AND ff.evidence IS NOT NULL AND ff.evidence != '' AND ff.evidence != ?
+        AND ff.recommendation IS NOT NULL AND ff.recommendation != '' AND ff.recommendation != ?
         AND ff.cvss_severity IS NOT NULL AND ff.cvss_severity != ''
         AND vc.category IS NOT NULL AND vc.category != ''
         AND vc.subcategory IS NOT NULL AND vc.subcategory != ''
         AND vc.scope IS NOT NULL AND vc.scope != ''
       ORDER BY ff.created_at DESC
     ''',
-      [projectId, projectId],
+      [projectId, projectId, _quillEmptyValue, _quillEmptyValue],
     );
   }
 
@@ -332,22 +336,22 @@ class FindingsRepository extends BaseRepository {
     final db = await _dbConnection.database;
     return await db.rawQuery(
       '''
-      SELECT ff.*, 
+      SELECT ff.*,
              CASE WHEN ff.device_id = 0 THEN NULL ELSE d.icon_type END as icon_type,
              ff.device_id
       FROM flagged_findings ff
       LEFT JOIN devices d ON ff.device_id = d.id AND ff.device_id != 0
       LEFT JOIN vulnerability_classifications vc ON ff.id = vc.finding_id
       WHERE ((ff.device_id = 0 AND ff.project_id = ?) OR (d.project_id = ?))
-        AND (ff.evidence IS NULL OR ff.evidence = ''
-             OR ff.recommendation IS NULL OR ff.recommendation = ''
+        AND (ff.evidence IS NULL OR ff.evidence = '' OR ff.evidence = ?
+             OR ff.recommendation IS NULL OR ff.recommendation = '' OR ff.recommendation = ?
              OR ff.cvss_severity IS NULL OR ff.cvss_severity = ''
              OR vc.category IS NULL OR vc.category = ''
              OR vc.subcategory IS NULL OR vc.subcategory = ''
              OR vc.scope IS NULL OR vc.scope = '')
       ORDER BY ff.created_at DESC
     ''',
-      [projectId, projectId],
+      [projectId, projectId, _quillEmptyValue, _quillEmptyValue],
     );
   }
 
@@ -389,10 +393,10 @@ class FindingsRepository extends BaseRepository {
     final finding = results.first;
     final missingCriteria = <String>[];
 
-    if (finding['evidence'] == null || finding['evidence'] == '') {
+    if (_isEmptyQuillField(finding['evidence'])) {
       missingCriteria.add('evidence');
     }
-    if (finding['recommendation'] == null || finding['recommendation'] == '') {
+    if (_isEmptyQuillField(finding['recommendation'])) {
       missingCriteria.add('recommendation');
     }
     if (finding['cvss_severity'] == null || finding['cvss_severity'] == '') {
@@ -412,6 +416,14 @@ class FindingsRepository extends BaseRepository {
       'is_complete': missingCriteria.isEmpty,
       'missing_criteria': missingCriteria,
     };
+  }
+
+  /// Checks if a quill field value is effectively empty (null, empty string, or quill empty doc)
+  static bool _isEmptyQuillField(dynamic value) {
+    if (value == null) return true;
+    if (value == '') return true;
+    if (value == _quillEmptyValue) return true;
+    return false;
   }
 
   Future<List<Map<String, dynamic>>> getFindingsByCompletionStatus(
