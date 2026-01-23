@@ -160,6 +160,27 @@ class FindingsRepository extends BaseRepository {
     );
   }
 
+  Future<void> updateFlaggedFindingType(int id, String findingType) async {
+    if (kIsWeb) {
+      final response = await http.put(
+        Uri.parse('${ApiDatabaseHelper.baseUrl}/findings/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'finding_type': findingType}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update finding type: ${response.statusCode}');
+      }
+      return;
+    }
+    final db = await _dbConnection.database;
+    await db.update(
+      'flagged_findings',
+      {'finding_type': findingType},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> updateFlaggedFindingCvss(
     int id, {
     String? attackVector,

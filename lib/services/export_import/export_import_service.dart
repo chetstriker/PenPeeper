@@ -173,6 +173,14 @@ class ExportImportService {
       debugPrint('snmp_findings table not found, skipping');
     }
 
+    // Get scan ranges
+    List<Map<String, dynamic>> scanRanges = [];
+    try {
+      scanRanges = await db.query('scan_range', where: 'project_id = ?', whereArgs: [projectId]);
+    } catch (e) {
+      debugPrint('scan_range table not found, skipping');
+    }
+
     // Collect upload files
     final uploadFiles = await _collectUploadFiles(projectId);
 
@@ -199,6 +207,7 @@ class ExportImportService {
       sambaLdapFindings: sambaLdapFindings,
       snmpFindings: snmpFindings,
       uploadFiles: uploadFiles,
+      scanRanges: scanRanges,
     );
   }
 

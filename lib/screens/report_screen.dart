@@ -16,6 +16,15 @@ import 'package:penpeeper/widgets/report_section_editor.dart';
 import 'package:penpeeper/widgets/report_graphic_selector.dart';
 import 'package:penpeeper/widgets/report_graphic_capturer.dart';
 import 'package:penpeeper/constants/report_section_examples.dart';
+import 'package:penpeeper/widgets/ai_executive_summary_dialog.dart';
+import 'package:penpeeper/widgets/ai_conclusion_dialog.dart';
+import 'package:penpeeper/repositories/settings_repository.dart';
+import 'package:penpeeper/repositories/report_section_repository.dart';
+import 'package:penpeeper/database_helper.dart';
+import 'package:penpeeper/models/llm_settings.dart';
+import 'package:penpeeper/models/llm_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:sqflite_common/sqlite_api.dart';
 
 class ReportScreen extends StatefulWidget {
   final int projectId;
@@ -43,11 +52,19 @@ class _ReportScreenState extends State<ReportScreen> {
   final _scrollController = ScrollController();
   PdfGenerationStatus _pdfStatus = PdfGenerationStatus.idle();
   final _exportDelegate = ExportDelegate();
+  final _settingsRepo = SettingsRepository();
+  final _reportSectionRepo = ReportSectionRepository();
+  bool _hasLlmConfigured = false;
+  final _companyNameController = TextEditingController();
+  final _startDateController = TextEditingController();
+  final _endDateController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadReportData();
+    _checkLlmSettings();
+    _loadProjectMetadata();
     _pdfGenerator.statusStream.listen((status) {
       if (mounted) {
         setState(() => _pdfStatus = status);
@@ -59,7 +76,78 @@ class _ReportScreenState extends State<ReportScreen> {
   void dispose() {
     _pdfGenerator.dispose();
     _scrollController.dispose();
+    _companyNameController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProjectMetadata() async {
+    try {
+      final companyName = await _reportSectionRepo.getReportSection(widget.projectId, 'company_name');
+      final startDate = await _reportSectionRepo.getReportSection(widget.projectId, 'start_date');
+      final endDate = await _reportSectionRepo.getReportSection(widget.projectId, 'end_date');
+      
+      if (mounted) {
+        setState(() {
+          _companyNameController.text = companyName?.content ?? '';
+          _startDateController.text = startDate?.content ?? '';
+          _endDateController.text = endDate?.content ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading project metadata: $e');
+    }
+  }
+
+  Future<void> _saveProjectMetadata(String sectionType, String value) async {
+    try {
+      await _reportSectionRepo.saveReportSectionRaw(widget.projectId, sectionType, value);
+    } catch (e) {
+      debugPrint('Error saving $sectionType: $e');
+    }
+  }
+
+  Future<void> _selectDate(TextEditingController controller, String sectionType) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      final formatted = DateFormat('yyyy-MM-dd').format(picked);
+      controller.text = formatted;
+      await _saveProjectMetadata(sectionType, formatted);
+    }
+  }
+
+  Future<void> _checkLlmSettings() async {
+    try {
+      final settingsJson = await _settingsRepo.getSetting('llm_settings', '');
+      if (settingsJson.isNotEmpty) {
+        final settings = LLMSettings.fromJson(json.decode(settingsJson));
+        setState(() {
+          _hasLlmConfigured = settings.provider != LLMProvider.none;
+        });
+      }
+    } catch (e) {
+      setState(() => _hasLlmConfigured = false);
+    }
+  }
+
+  void _showAiSummaryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AiExecutiveSummaryDialog(projectId: widget.projectId),
+    );
+  }
+
+  void _showAiConclusionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AiConclusionDialog(projectId: widget.projectId),
+    );
   }
 
   Future<void> _loadReportData() async {
@@ -384,6 +472,92 @@ class _ReportScreenState extends State<ReportScreen> {
                               ],
                             ),
                             const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.inputBackground,
+                                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                                border: Border.all(color: AppTheme.borderSecondary),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Company Name', style: TextStyle(fontSize: AppTheme.fontSizeBodyLarge, fontWeight: AppTheme.fontWeightMedium, color: AppTheme.textPrimary)),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _companyNameController,
+                                    style: TextStyle(color: AppTheme.textPrimary),
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter company name...',
+                                      hintStyle: TextStyle(color: AppTheme.textTertiary),
+                                      border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)),
+                                    ),
+                                    onChanged: (value) => _saveProjectMetadata('company_name', value),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Start Date', style: TextStyle(fontSize: AppTheme.fontSizeBodyLarge, fontWeight: AppTheme.fontWeightMedium, color: AppTheme.textPrimary)),
+                                            const SizedBox(height: 8),
+                                            TextField(
+                                              controller: _startDateController,
+                                              readOnly: true,
+                                              style: TextStyle(color: AppTheme.textPrimary),
+                                              decoration: InputDecoration(
+                                                hintText: 'YYYY-MM-DD',
+                                                hintStyle: TextStyle(color: AppTheme.textTertiary),
+                                                border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)),
+                                                suffixIcon: IconButton(
+                                                  icon: Icon(Icons.calendar_today, color: AppTheme.primaryColor),
+                                                  onPressed: () => _selectDate(_startDateController, 'start_date'),
+                                                ),
+                                              ),
+                                              onTap: () => _selectDate(_startDateController, 'start_date'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('End Date', style: TextStyle(fontSize: AppTheme.fontSizeBodyLarge, fontWeight: AppTheme.fontWeightMedium, color: AppTheme.textPrimary)),
+                                            const SizedBox(height: 8),
+                                            TextField(
+                                              controller: _endDateController,
+                                              readOnly: true,
+                                              style: TextStyle(color: AppTheme.textPrimary),
+                                              decoration: InputDecoration(
+                                                hintText: 'YYYY-MM-DD',
+                                                hintStyle: TextStyle(color: AppTheme.textTertiary),
+                                                border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.borderPrimary)),
+                                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)),
+                                                suffixIcon: IconButton(
+                                                  icon: Icon(Icons.calendar_today, color: AppTheme.primaryColor),
+                                                  onPressed: () => _selectDate(_endDateController, 'end_date'),
+                                                ),
+                                              ),
+                                              onTap: () => _selectDate(_endDateController, 'end_date'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             ReportSectionEditor(projectId: widget.projectId, sectionType: 'report_header', title: 'Report Header', placeholder: 'Report title...', projectName: widget.projectName, exampleContent: 'Security Assessment Findings Report', description: 'The main title/header for your report.'),
                             const SizedBox(height: 16),
                             ReportGraphicSelector(projectId: widget.projectId),
@@ -394,13 +568,33 @@ class _ReportScreenState extends State<ReportScreen> {
                                 exportDelegate: _exportDelegate,
                               ),
                             const SizedBox(height: 16),
-                            ReportSectionEditor(projectId: widget.projectId, sectionType: 'executive_summary', title: 'Executive Summary', placeholder: 'Non-technical summary...', projectName: widget.projectName, exampleContent: ReportSectionExamples.executiveSummary, description: ReportSectionExamples.executiveSummaryDescription),
+                            ReportSectionEditor(
+                              projectId: widget.projectId,
+                              sectionType: 'executive_summary',
+                              title: 'Executive Summary',
+                              placeholder: 'Non-technical summary...',
+                              projectName: widget.projectName,
+                              exampleContent: ReportSectionExamples.executiveSummary,
+                              description: ReportSectionExamples.executiveSummaryDescription,
+                              showAiButton: _hasLlmConfigured,
+                              onAiButtonPressed: _showAiSummaryDialog,
+                            ),
                             const SizedBox(height: 16),
                             ReportSectionEditor(projectId: widget.projectId, sectionType: 'methodology_scope', title: 'Methodology and Scope', placeholder: 'Testing approach...', projectName: widget.projectName, exampleContent: ReportSectionExamples.methodologyScope, description: ReportSectionExamples.methodologyScopeDescription),
                             const SizedBox(height: 16),
                             ReportSectionEditor(projectId: widget.projectId, sectionType: 'risk_rating_model', title: 'Risk Rating Model', placeholder: 'Severity ratings...', projectName: widget.projectName, exampleContent: ReportSectionExamples.riskRatingModel, description: ReportSectionExamples.riskRatingModelDescription),
                             const SizedBox(height: 16),
-                            ReportSectionEditor(projectId: widget.projectId, sectionType: 'conclusion', title: 'Conclusion', placeholder: 'Final summary...', projectName: widget.projectName, exampleContent: ReportSectionExamples.conclusion, description: ReportSectionExamples.conclusionDescription),
+                            ReportSectionEditor(
+                              projectId: widget.projectId,
+                              sectionType: 'conclusion',
+                              title: 'Conclusion',
+                              placeholder: 'Final summary...',
+                              projectName: widget.projectName,
+                              exampleContent: ReportSectionExamples.conclusion,
+                              description: ReportSectionExamples.conclusionDescription,
+                              showAiButton: _hasLlmConfigured,
+                              onAiButtonPressed: _showAiConclusionDialog,
+                            ),
                           ],
                         ),
                       ),

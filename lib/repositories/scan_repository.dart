@@ -68,6 +68,17 @@ class ScanRepository extends BaseRepository {
     return maps.map((map) => Scan.fromMap(map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> getScansForDevice(int deviceId) async {
+    if (kIsWeb) {
+      return await ApiDatabaseHelper().getScans(deviceId);
+    }
+    return await _readService.query('scans',
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+      orderBy: 'created_at DESC',
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getScansRaw(int deviceId) async {
     if (kIsWeb) {
       return await ApiDatabaseHelper().getScans(deviceId);

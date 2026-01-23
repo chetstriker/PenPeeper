@@ -836,4 +836,47 @@ class MetadataRepository extends BaseRepository {
       // Don't rethrow - we want to continue loading even if update fails
     }
   }
+
+  Future<List<Map<String, dynamic>>> getNmapPorts(int deviceId) async {
+    if (kIsWeb) {
+      try {
+        final response = await http.get(Uri.parse('/api/devices/$deviceId/nmap-ports'));
+        if (response.statusCode == 200) {
+          return List<Map<String, dynamic>>.from(json.decode(response.body));
+        }
+      } catch (e) {}
+      return [];
+    }
+    final db = await _dbConnection.database;
+    final results = await db.rawQuery('''
+      SELECT p.*
+      FROM nmap_ports p
+      JOIN nmap_hosts h ON p.host_id = h.id
+      WHERE h.device_id = ?
+      ORDER BY p.port ASC
+    ''', [deviceId]);
+    return results;
+  }
+
+  Future<List<Map<String, dynamic>>> getNmapScripts(int deviceId) async {
+    if (kIsWeb) {
+      try {
+        final response = await http.get(Uri.parse('/api/devices/$deviceId/nmap-scripts'));
+        if (response.statusCode == 200) {
+          return List<Map<String, dynamic>>.from(json.decode(response.body));
+        }
+      } catch (e) {}
+      return [];
+    }
+    final db = await _dbConnection.database;
+    final results = await db.rawQuery('''
+      SELECT s.*
+      FROM nmap_scripts s
+      JOIN nmap_ports p ON s.port_id = p.id
+      JOIN nmap_hosts h ON p.host_id = h.id
+      WHERE h.device_id = ?
+      ORDER BY s.script_id ASC
+    ''', [deviceId]);
+    return results;
+  }
 }

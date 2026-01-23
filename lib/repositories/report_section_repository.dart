@@ -63,6 +63,17 @@ class ReportSectionRepository {
   }
 
   Future<void> saveReportSectionRaw(int projectId, String sectionType, String content) async {
+    if (kIsWeb) {
+      final section = ReportSection(
+        projectId: projectId,
+        sectionType: sectionType,
+        content: content,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await ApiDatabaseHelper().saveReportSection(section);
+      return;
+    }
     final db = await _db.database;
     await db.insert(
       'report_sections',

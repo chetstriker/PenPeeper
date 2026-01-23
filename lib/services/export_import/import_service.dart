@@ -468,6 +468,37 @@ class ImportService {
         classData['device_id'] = newDeviceId;
         classData['finding_id'] = newFindingId;
         classData.remove('id');
+
+        // Handle legacy data migration: these fields belong in flagged_findings, not classifications
+        // Older exports may have stored these in classifications table
+        final legacyRecommendation = classData.remove('recommendation');
+        final legacyEvidence = classData.remove('evidence');
+        final legacyComment = classData.remove('comment');
+
+        // If any legacy fields have values, update the corresponding finding record
+        if (legacyRecommendation != null || legacyEvidence != null || legacyComment != null) {
+          final updateFields = <String, dynamic>{};
+          if (legacyRecommendation != null && legacyRecommendation.toString().isNotEmpty) {
+            updateFields['recommendation'] = legacyRecommendation;
+          }
+          if (legacyEvidence != null && legacyEvidence.toString().isNotEmpty) {
+            updateFields['evidence'] = legacyEvidence;
+          }
+          if (legacyComment != null && legacyComment.toString().isNotEmpty) {
+            updateFields['comment'] = legacyComment;
+          }
+
+          if (updateFields.isNotEmpty) {
+            debugPrint('  Migrating legacy fields from classification to finding $newFindingId: ${updateFields.keys.join(', ')}');
+            await txn.update(
+              'flagged_findings',
+              updateFields,
+              where: 'id = ?',
+              whereArgs: [newFindingId],
+            );
+          }
+        }
+
         await txn.insert('vulnerability_classifications', classData);
       }
 
@@ -598,6 +629,14 @@ class ImportService {
         findingData['project_id'] = projectId;
         findingData.remove('id');
         await txn.insert('snmp_findings', findingData);
+      }
+
+      // Insert scan ranges
+      for (final scanRange in project.scanRanges) {
+        final rangeData = Map<String, dynamic>.from(scanRange);
+        rangeData['project_id'] = projectId;
+        rangeData.remove('id');
+        await txn.insert('scan_range', rangeData);
       }
 
       debugPrint('=== IMPORT COMPLETE ===\n');

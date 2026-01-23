@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:penpeeper/repositories/findings_repository.dart';
 import 'package:penpeeper/repositories/vulnerability_repository.dart';
-
+import 'package:penpeeper/repositories/settings_repository.dart';
 import 'package:penpeeper/services/project_data_cache.dart';
 import 'package:penpeeper/services/findings/findings_controller.dart';
 import 'package:penpeeper/services/findings/findings_export_coordinator.dart';
@@ -17,6 +17,8 @@ import 'package:penpeeper/widgets/common/decorated_dialog_title.dart';
 import 'package:penpeeper/widgets/device_details_section.dart';
 import 'package:penpeeper/models.dart';
 import 'package:penpeeper/screens/project_screen.dart';
+import 'package:penpeeper/models/llm_settings.dart';
+import 'package:penpeeper/widgets/ai_device_search_modal.dart';
 
 class FindingsFlaggedScreen extends StatefulWidget {
   final int projectId;
@@ -40,6 +42,7 @@ class _FindingsFlaggedScreenState extends State<FindingsFlaggedScreen> {
   final _vulnRepo = VulnerabilityRepository();
   final _cache = ProjectDataCache();
   final _exportCoordinator = FindingsExportCoordinator();
+  final _settingsRepo = SettingsRepository();
   late final FindingsController _findingsController;
 
   String searchType = 'HOST';
@@ -47,6 +50,7 @@ class _FindingsFlaggedScreenState extends State<FindingsFlaggedScreen> {
   String selectedTag = '';
   String completionFilter = 'incomplete';
   List<Map<String, dynamic>> flaggedFindings = [];
+  bool _showAIButton = false;
 
   @override
   void initState() {
@@ -54,6 +58,46 @@ class _FindingsFlaggedScreenState extends State<FindingsFlaggedScreen> {
     _findingsController = FindingsController(widget.projectId);
     _refreshFlaggedFindings();
     _cache.addListener(_onCacheChanged);
+    _checkLLMSettings();
+  }
+
+  Future<void> _checkLLMSettings() async {
+    try {
+      final settingsJson = await _settingsRepo.getSetting('llm_settings', '');
+      if (settingsJson.isNotEmpty) {
+        final settings = LLMSettings.fromJson(json.decode(settingsJson));
+        setState(() {
+          _showAIButton = settings.provider.name != 'none';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking LLM settings: $e');
+    }
+  }
+
+  Future<void> _openAISearchModal() async {
+    try {
+      final settingsJson = await _settingsRepo.getSetting('llm_settings', '');
+      if (settingsJson.isEmpty) return;
+      
+      final settings = LLMSettings.fromJson(json.decode(settingsJson));
+      if (!mounted) return;
+      
+      await showDialog(
+        context: context,
+        builder: (context) => AIDeviceSearchModal(
+          projectId: widget.projectId,
+          llmSettings: settings,
+          onFindingAdded: _refreshFlaggedFindings,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _onCacheChanged() {
@@ -317,6 +361,18 @@ class _FindingsFlaggedScreenState extends State<FindingsFlaggedScreen> {
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
+          if (_showAIButton) ...[
+            ElevatedButton.icon(
+              onPressed: _openAISearchModal,
+              icon: const Icon(Icons.psychology, size: 18),
+              label: const Text('Search Devices With AI'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+            const SizedBox(width: 16),
+          ],
           Expanded(
             child: Stack(
               children: [

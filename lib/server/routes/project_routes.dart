@@ -203,6 +203,23 @@ class ProjectRoutes {
       return _jsonResponse(findings.map((f) => f.toMap()).toList());
     }
 
+    // POST /api/projects/:id/scan-ranges
+    if (parts[1] == 'scan-ranges' &&
+        parts.length == 2 &&
+        request.method == 'POST') {
+      final body = json.decode(await request.readAsString());
+      await projectRepository.insertScanRange(projectId, body['ip_range']);
+      return _jsonResponse({'success': true});
+    }
+
+    // GET /api/projects/:id/scan-ranges
+    if (parts[1] == 'scan-ranges' &&
+        parts.length == 2 &&
+        request.method == 'GET') {
+      final ranges = await projectRepository.getScanRanges(projectId);
+      return _jsonResponse(ranges);
+    }
+
     return null;
   }
 

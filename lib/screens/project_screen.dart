@@ -416,6 +416,8 @@ class ProjectScreenState extends State<ProjectScreen>
   }
 
   Future<void> _startAutomatedScan(String target) async {
+    // Save scan range
+    await _projectRepo.insertScanRange(widget.project.id, target);
     // Prompt for password if needed (works for both desktop and web)
     if (!PrivilegedRunner.hasPassword) {
       final hasPassword = await MacOSPasswordPrompt.promptIfNeeded(context);

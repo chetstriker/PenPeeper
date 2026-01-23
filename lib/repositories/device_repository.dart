@@ -39,6 +39,25 @@ class DeviceRepository extends BaseRepository {
     return maps.map((map) => Device.fromMap(map)).toList();
   }
 
+  Future<Map<String, dynamic>> getDevice(int deviceId) async {
+    if (kIsWeb) {
+      try {
+        final response = await http.get(Uri.parse('/api/devices/$deviceId'));
+        if (response.statusCode == 200) {
+          return json.decode(response.body);
+        }
+      } catch (e) {}
+      return {};
+    }
+    final db = await _dbConnection.database;
+    final results = await db.query('devices',
+      where: 'id = ?',
+      whereArgs: [deviceId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : {};
+  }
+
   Future<Device?> getDeviceById(int deviceId) async {
     if (kIsWeb) {
       try {

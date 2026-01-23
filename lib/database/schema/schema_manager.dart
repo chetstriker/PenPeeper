@@ -1,7 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class SchemaManager {
-  static const int currentVersion = 25;
+  static const int currentVersion = 26;
 
   static Future<void> onCreate(Database db, int version) async {
     await _createTables(db);
@@ -280,6 +280,16 @@ class SchemaManager {
         UNIQUE(project_id, section_type)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE scan_range (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        ip_range TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects (id)
+      )
+    ''');
   }
 
   static Future<void> _createIndexes(Database db) async {
@@ -297,6 +307,7 @@ class SchemaManager {
     await db.execute('CREATE INDEX idx_nikto_findings_device_id ON nikto_findings(device_id)');
     await db.execute('CREATE INDEX idx_nmap_scripts_port_id ON nmap_scripts(port_id)');
     await db.execute('CREATE INDEX idx_nmap_cves_script_id ON nmap_cves(script_id)');
+    await db.execute('CREATE INDEX idx_scan_range_project_id ON scan_range(project_id)');
   }
 
   static Future<void> _insertDefaultData(Database db) async {
@@ -431,6 +442,24 @@ class SchemaManager {
         await db.execute('CREATE INDEX idx_nmap_cves_script_id ON nmap_cves(script_id)');
       } catch (e) {
         // Index might already exist
+      }
+    }
+
+    if (oldVersion < 26) {
+      // Create scan_range table
+      try {
+        await db.execute('''
+          CREATE TABLE scan_range (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            ip_range TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects (id)
+          )
+        ''');
+        await db.execute('CREATE INDEX idx_scan_range_project_id ON scan_range(project_id)');
+      } catch (e) {
+        // Table might already exist
       }
     }
   }

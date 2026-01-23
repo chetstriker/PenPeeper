@@ -484,4 +484,30 @@ class ApiDatabaseHelper {
       return {};
     }
   }
+
+  Future<void> insertScanRange(int projectId, String ipRange) async {
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/projects/$projectId/scan-ranges'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'ip_range': ipRange}),
+      );
+    } catch (e, stack) {
+      ErrorHandler.handle(e, stackTrace: stack, context: 'Insert scan range');
+      rethrow;
+    }
+  }
+
+  Future<List<String>> getScanRanges(int projectId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/scan-ranges'));
+      if (response.statusCode == 200) {
+        return List<String>.from(json.decode(response.body));
+      }
+      return [];
+    } catch (e, stack) {
+      ErrorHandler.handle(e, stackTrace: stack, context: 'Get scan ranges');
+      return [];
+    }
+  }
 }

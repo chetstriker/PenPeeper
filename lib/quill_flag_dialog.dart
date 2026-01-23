@@ -18,6 +18,12 @@ import 'package:http/http.dart' as http;
 import 'package:penpeeper/utils/quill_embed_helper.dart';
 import 'package:penpeeper/widgets/simple_quill_spell_checker.dart';
 import 'package:penpeeper/widgets/custom_image_embed_builder.dart';
+import 'package:penpeeper/widgets/ai_recommendation_dialog.dart';
+import 'package:penpeeper/widgets/ai_evidence_dialog.dart';
+import 'package:penpeeper/repositories/settings_repository.dart';
+import 'package:penpeeper/models/llm_provider.dart';
+import 'package:penpeeper/models/llm_settings.dart';
+import 'package:penpeeper/widgets/category_subcategory_selector_dialog.dart';
 
 class QuillFlagDialog extends StatefulWidget {
   final String deviceName;
@@ -74,8 +80,10 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
   Map<String, dynamic>? _selectedSubcategoryData;
   String? _scope;
   bool _isLoading = true;
+  bool _hasLlmSettings = false;
 
   final _findingsRepo = FindingsRepository();
+  final _settingsRepo = SettingsRepository();
 
   @override
   void initState() {
@@ -168,6 +176,7 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
     }
     _cvssData = widget.initialCvssData;
     _loadTaxonomyData();
+    _checkLlmSettings();
 
     // Add listeners to update tab indicators when content changes
     _controller.addListener(() => setState(() {}));
@@ -178,6 +187,19 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _checkLlmSettings() async {
+    try {
+      final settingsJson = await _settingsRepo.getSetting('llm_settings', '');
+      if (settingsJson.isNotEmpty) {
+        final settings = LLMSettings.fromJson(json.decode(settingsJson));
+        _hasLlmSettings = settings.provider != LLMProvider.none;
+      }
+    } catch (e) {
+      _hasLlmSettings = false;
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadTaxonomyData() async {
@@ -451,7 +473,7 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
               ),
               SimpleQuillSpellChecker(
                 controller: _recommendationController,
-                child: _buildQuillEditor(_recommendationController),
+                child: _buildQuillEditor(_recommendationController, isRecommendation: true),
               ),
             ],
           ),
@@ -465,7 +487,7 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
         controller.document.toPlainText().trim().isEmpty;
   }
 
-  Widget _buildQuillEditor(QuillController controller) {
+  Widget _buildQuillEditor(QuillController controller, {bool isRecommendation = false}) {
     FocusNode focusNode;
     ScrollController scrollController;
 
@@ -479,6 +501,8 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
       focusNode = _recommendationFocusNode;
       scrollController = _recommendationScrollController;
     }
+
+    final isEvidence = controller == _evidenceController;
 
     return GradientBorderContainer(
       borderConfig: AppTheme.borderPrimaryGradient ?? AppTheme.borderPrimary,
@@ -502,6 +526,60 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
                   ),
                 ),
               ),
+              if (isRecommendation && _hasLlmSettings)
+                IconButton(
+                  icon: Icon(Icons.psychology, color: AppTheme.primaryColor),
+                  onPressed: () async {
+                    final descriptionText = _controller.document.toPlainText().trim();
+                    if (descriptionText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please add a description first')),
+                      );
+                      return;
+                    }
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) => AiRecommendationDialog(
+                        descriptionText: descriptionText,
+                        deviceId: widget.deviceId ?? 0,
+                        severity: _cvssData?.severity?.label,
+                        category: _selectedCategory,
+                        cvssScore: _cvssData?.baseScore?.toStringAsFixed(1),
+                      ),
+                    );
+                    if (result != null && mounted) {
+                      controller.document.insert(controller.document.length, result);
+                    }
+                  },
+                  tooltip: 'Generate with AI',
+                ),
+              if (isEvidence && _hasLlmSettings)
+                IconButton(
+                  icon: Icon(Icons.psychology, color: AppTheme.primaryColor),
+                  onPressed: () async {
+                    final descriptionText = _controller.document.toPlainText().trim();
+                    if (descriptionText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please add a description first')),
+                      );
+                      return;
+                    }
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) => AiEvidenceDialog(
+                        descriptionText: descriptionText,
+                        deviceId: widget.deviceId ?? 0,
+                        severity: _cvssData?.severity?.label,
+                        category: _selectedCategory,
+                        cvssScore: _cvssData?.baseScore?.toStringAsFixed(1),
+                      ),
+                    );
+                    if (result != null && mounted) {
+                      controller.document.insert(controller.document.length, result);
+                    }
+                  },
+                  tooltip: 'Generate with AI',
+                ),
               CustomQuillImageButton(
                 controller: controller,
                 projectName: widget.projectName,
@@ -584,6 +662,16 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
                         ],
                       ),
                     ),
+                    DropdownMenuItem(
+                      value: 'AI',
+                      child: Row(
+                        children: [
+                          Icon(Icons.psychology, color: Colors.purple, size: 16),
+                          const SizedBox(width: 8),
+                          const Text('AI'),
+                        ],
+                      ),
+                    ),
                   ],
                   onChanged: (value) => setState(() => selectedType = value!),
                 ),
@@ -593,13 +681,34 @@ class _QuillFlagDialogState extends State<QuillFlagDialog>
           ],
 
           // Category
-          Text(
-            'Category',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
+          Row(
+            children: [
+              Text(
+                'Category',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () async {
+                  final result = await showDialog<Map<String, String>>(
+                    context: context,
+                    builder: (context) => const CategorySubcategorySelectorDialog(),
+                  );
+                  if (result != null && mounted) {
+                    setState(() {
+                      _selectedCategory = result['category'];
+                      _selectedSubcategory = result['subcategory'];
+                      _updateSubcategoryData();
+                    });
+                  }
+                },
+                child: Icon(Icons.search, size: 16, color: AppTheme.primaryColor),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           GradientBorderContainer(

@@ -15,6 +15,12 @@ import 'package:penpeeper/services/project_data_cache.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:penpeeper/utils/quill_embed_helper.dart';
 import 'package:penpeeper/widgets/custom_image_embed_builder.dart';
+import 'package:penpeeper/widgets/ai_recommendation_dialog.dart';
+import 'package:penpeeper/widgets/ai_evidence_dialog.dart';
+import 'package:penpeeper/repositories/settings_repository.dart';
+import 'package:penpeeper/models/llm_provider.dart';
+import 'package:penpeeper/models/llm_settings.dart';
+import 'package:penpeeper/widgets/category_subcategory_selector_dialog.dart';
 
 class CveEditModal extends StatefulWidget {
   final Map<String, dynamic> finding;
@@ -55,6 +61,9 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
   bool _isLoading = true;
   Map<String, dynamic>? _existingClassification;
   String _projectName = '';
+  bool _hasLlmSettings = false;
+
+  final _settingsRepo = SettingsRepository();
 
   @override
   void initState() {
@@ -152,9 +161,22 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
       _loadTaxonomyData(),
       _loadExistingClassification(),
       _loadProjectName(),
+      _checkLlmSettings(),
     ]);
     _autoPopulateScope();
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _checkLlmSettings() async {
+    try {
+      final settingsJson = await _settingsRepo.getSetting('llm_settings', '');
+      if (settingsJson.isNotEmpty) {
+        final settings = LLMSettings.fromJson(json.decode(settingsJson));
+        _hasLlmSettings = settings.provider != LLMProvider.none;
+      }
+    } catch (e) {
+      _hasLlmSettings = false;
+    }
   }
 
   Future<void> _loadProjectName() async {
@@ -647,7 +669,7 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
             children: [
               _buildQuillEditor(_commentController),
               _buildQuillEditor(_evidenceController),
-              _buildQuillEditor(_recommendationController),
+              _buildQuillEditor(_recommendationController, isRecommendation: true),
             ],
           ),
         ),
@@ -660,7 +682,7 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
            controller.document.toPlainText().trim().isEmpty;
   }
 
-  Widget _buildQuillEditor(QuillController controller) {
+  Widget _buildQuillEditor(QuillController controller, {bool isRecommendation = false}) {
     FocusNode focusNode;
     ScrollController scrollController;
     
@@ -674,6 +696,8 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
       focusNode = _recommendationFocusNode;
       scrollController = _recommendationScrollController;
     }
+    
+    final isEvidence = controller == _evidenceController;
     
     return GradientBorderContainer(
       borderConfig: AppTheme.borderPrimaryGradient ?? AppTheme.borderPrimary,
@@ -697,6 +721,60 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
                   ),
                 ),
               ),
+              if (isRecommendation && _hasLlmSettings)
+                IconButton(
+                  icon: Icon(Icons.psychology, color: AppTheme.primaryColor),
+                  onPressed: () async {
+                    final descriptionText = _commentController.document.toPlainText().trim();
+                    if (descriptionText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please add a description first')),
+                      );
+                      return;
+                    }
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) => AiRecommendationDialog(
+                        descriptionText: descriptionText,
+                        deviceId: widget.deviceId,
+                        severity: widget.finding['cvss_severity'] as String?,
+                        category: _selectedCategory ?? widget.finding['category'] as String?,
+                        cvssScore: (widget.finding['cvss_base_score'] as double?)?.toStringAsFixed(1),
+                      ),
+                    );
+                    if (result != null && mounted) {
+                      controller.document.insert(controller.document.length, result);
+                    }
+                  },
+                  tooltip: 'Generate with AI',
+                ),
+              if (isEvidence && _hasLlmSettings)
+                IconButton(
+                  icon: Icon(Icons.psychology, color: AppTheme.primaryColor),
+                  onPressed: () async {
+                    final descriptionText = _commentController.document.toPlainText().trim();
+                    if (descriptionText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please add a description first')),
+                      );
+                      return;
+                    }
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) => AiEvidenceDialog(
+                        descriptionText: descriptionText,
+                        deviceId: widget.deviceId,
+                        severity: widget.finding['cvss_severity'] as String?,
+                        category: _selectedCategory ?? widget.finding['category'] as String?,
+                        cvssScore: (widget.finding['cvss_base_score'] as double?)?.toStringAsFixed(1),
+                      ),
+                    );
+                    if (result != null && mounted) {
+                      controller.document.insert(controller.document.length, result);
+                    }
+                  },
+                  tooltip: 'Generate with AI',
+                ),
               CustomQuillImageButton(
                 controller: controller,
                 projectName: _projectName,
@@ -727,7 +805,28 @@ class _CveEditModalState extends State<CveEditModal> with TickerProviderStateMix
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Category', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+          Row(
+            children: [
+              Text('Category', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () async {
+                  final result = await showDialog<Map<String, String>>(
+                    context: context,
+                    builder: (context) => const CategorySubcategorySelectorDialog(),
+                  );
+                  if (result != null && mounted) {
+                    setState(() {
+                      _selectedCategory = result['category'];
+                      _selectedSubcategory = result['subcategory'];
+                      _updateSubcategoryData();
+                    });
+                  }
+                },
+                child: Icon(Icons.search, size: 16, color: AppTheme.primaryColor),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           GradientBorderContainer(
             borderConfig: AppTheme.borderPrimaryGradient ?? AppTheme.borderPrimary,

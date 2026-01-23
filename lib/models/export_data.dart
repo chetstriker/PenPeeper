@@ -51,6 +51,7 @@ class ProjectExport {
   final List<Map<String, dynamic>> sambaLdapFindings;
   final List<Map<String, dynamic>> snmpFindings;
   final List<String> uploadFiles;
+  final List<Map<String, dynamic>> scanRanges;
 
   ProjectExport({
     required this.project,
@@ -73,6 +74,7 @@ class ProjectExport {
     required this.sambaLdapFindings,
     required this.snmpFindings,
     required this.uploadFiles,
+    required this.scanRanges,
   });
 
   Map<String, dynamic> toJson() => {
@@ -96,6 +98,7 @@ class ProjectExport {
         'sambaLdapFindings': sambaLdapFindings,
         'snmpFindings': snmpFindings,
         'uploadFiles': uploadFiles,
+        'scanRanges': scanRanges,
       };
 
   factory ProjectExport.fromJson(Map<String, dynamic> json) => ProjectExport(
@@ -122,5 +125,6 @@ class ProjectExport {
         sambaLdapFindings: List<Map<String, dynamic>>.from(json['sambaLdapFindings'] ?? []),
         snmpFindings: List<Map<String, dynamic>>.from(json['snmpFindings'] ?? []),
         uploadFiles: List<String>.from(json['uploadFiles']),
+        scanRanges: List<Map<String, dynamic>>.from(json['scanRanges'] ?? []),
       );
 }

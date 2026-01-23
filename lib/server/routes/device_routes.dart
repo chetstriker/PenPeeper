@@ -52,6 +52,24 @@ class DeviceRoutes {
       return _jsonResponse(details);
     }
 
+    // GET /api/devices/:id/ai-data
+    if (parts.length == 2 && parts[1] == 'ai-data' && request.method == 'GET') {
+      final projectId = int.tryParse(request.url.queryParameters['projectId'] ?? '');
+      if (projectId == null) {
+        return shelf.Response(400, body: json.encode({'error': 'projectId required'}));
+      }
+      final device = await deviceRepository.getDevice(deviceId);
+      final ports = await metadataRepository.getNmapPorts(deviceId);
+      final scripts = await metadataRepository.getNmapScripts(deviceId);
+      final scans = await scanRepository.getScansForDevice(deviceId);
+      return _jsonResponse({
+        'device': device,
+        'ports': ports,
+        'scripts': scripts,
+        'scans': scans,
+      });
+    }
+
     // GET /api/devices/:id/findings
     if (parts.length == 2 && parts[1] == 'findings' && request.method == 'GET') {
       final findings = await findingsRepository.getFlaggedFindingsForDevice(

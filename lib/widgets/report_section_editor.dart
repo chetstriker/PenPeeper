@@ -21,6 +21,8 @@ class ReportSectionEditor extends StatefulWidget {
   final String projectName;
   final String? exampleContent;
   final String? description;
+  final bool showAiButton;
+  final VoidCallback? onAiButtonPressed;
 
   const ReportSectionEditor({
     super.key,
@@ -31,6 +33,8 @@ class ReportSectionEditor extends StatefulWidget {
     required this.projectName,
     this.exampleContent,
     this.description,
+    this.showAiButton = false,
+    this.onAiButtonPressed,
   });
 
   @override
@@ -197,6 +201,14 @@ class _ReportSectionEditorState extends State<ReportSectionEditor> {
                 child: IconButton(
                   icon: Icon(Icons.help_outline, size: 20, color: AppTheme.primaryColor),
                   onPressed: _showExample,
+                ),
+              ),
+            if (widget.showAiButton && widget.onAiButtonPressed != null)
+              Tooltip(
+                message: 'Generate with AI',
+                child: IconButton(
+                  icon: Icon(Icons.psychology, size: 20, color: AppTheme.primaryColor),
+                  onPressed: widget.onAiButtonPressed,
                 ),
               ),
             const Spacer(),

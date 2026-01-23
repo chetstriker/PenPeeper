@@ -324,6 +324,28 @@ class ProjectRepository extends BaseRepository {
     );
   }
 
+  Future<void> insertScanRange(int projectId, String ipRange) async {
+    if (kIsWeb) {
+      await ApiDatabaseHelper().insertScanRange(projectId, ipRange);
+      return;
+    }
+    final db = await _dbHelper.database;
+    await db.insert('scan_range', {
+      'project_id': projectId,
+      'ip_range': ipRange,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<String>> getScanRanges(int projectId) async {
+    if (kIsWeb) {
+      return await ApiDatabaseHelper().getScanRanges(projectId);
+    }
+    final db = await _dbHelper.database;
+    final results = await db.query('scan_range', where: 'project_id = ?', whereArgs: [projectId]);
+    return results.map((r) => r['ip_range'] as String).toList();
+  }
+
   /// Check if any NMap scan results exist for the project
   Future<bool> hasNmapResults(int projectId) async {
     if (kIsWeb) {

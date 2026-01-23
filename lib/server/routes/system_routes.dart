@@ -101,10 +101,17 @@ class SystemRoutes {
     if (parts.length == 2 &&
         parts[0] == 'settings' &&
         request.method == 'GET') {
-      final settingsRepository = SettingsRepository();
       final key = parts[1];
       final defaultValue = request.url.queryParameters['default'] ?? '';
-      final value = await settingsRepository.getSetting(key, defaultValue);
+      
+      final db = dbHelper != null ? await dbHelper.database : await DatabaseHelper().database;
+      final result = await db.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      
+      final value = result.isEmpty ? defaultValue : (result.first['value'] as String? ?? defaultValue);
       return _jsonResponse({'value': value});
     }
 
@@ -112,10 +119,15 @@ class SystemRoutes {
     if (parts.length == 2 &&
         parts[0] == 'settings' &&
         request.method == 'POST') {
-      final settingsRepository = SettingsRepository();
       final key = parts[1];
       final body = json.decode(await request.readAsString());
-      await settingsRepository.setSetting(key, body['value']);
+      final value = body['value'] as String;
+      
+      final db = dbHelper != null ? await dbHelper.database : await DatabaseHelper().database;
+      await db.execute(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        [key, value],
+      );
       return _jsonResponse({'success': true});
     }
 
@@ -124,9 +136,15 @@ class SystemRoutes {
         parts[0] == 'settings' &&
         parts[1] == 'init' &&
         request.method == 'POST') {
-      final settingsRepository = SettingsRepository();
-      await settingsRepository.setSetting('theme', 'DeepOcean');
-      await settingsRepository.setSetting('concurrent_scan_count', '3');
+      final db = dbHelper != null ? await dbHelper.database : await DatabaseHelper().database;
+      await db.execute(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        ['theme', 'DeepOcean'],
+      );
+      await db.execute(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        ['concurrent_scan_count', '3'],
+      );
       return _jsonResponse({'success': true});
     }
 
