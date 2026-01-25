@@ -75,13 +75,15 @@ class ReportSectionRepository {
       return;
     }
     final db = await _db.database;
+    final now = DateTime.now().toIso8601String();
     await db.insert(
       'report_sections',
       {
         'project_id': projectId,
         'section_type': sectionType,
         'content': content,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': now,
+        'updated_at': now,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
