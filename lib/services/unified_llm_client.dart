@@ -268,14 +268,35 @@ class UnifiedLLMClient {
         requestBody['system'] = config.systemPrompt!;
       }
       
+      print('[Ollama] Sending request to: $url/api/generate');
+      print('[Ollama] Model: ${config.modelName}');
+      print('[Ollama] Temperature: ${config.temperature}');
+      print('[Ollama] Max tokens: ${config.maxTokens}');
+      
       final response = await http.post(
         Uri.parse('$url/api/generate'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
       ).timeout(Duration(seconds: config.timeoutSeconds));
       
+      print('[Ollama] Response status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('[Ollama] Response keys: ${data.keys}');
+        
+        if (data.containsKey('error')) {
+          print('[Ollama] Error in response: ${data['error']}');
+          return LLMResponse(
+            content: '',
+            success: false,
+            errorMessage: 'Ollama error: ${data['error']}',
+            errorType: LLMErrorType.serverError,
+            statusCode: 200,
+            provider: 'Ollama',
+          );
+        }
+        
         final content = data['response'] as String? ?? '';
         
         if (content.isEmpty) {
@@ -323,6 +344,7 @@ class UnifiedLLMClient {
           provider: 'Ollama',
         );
       } else if (response.statusCode == 404) {
+        print('[Ollama] 404 response body: ${response.body}');
         return LLMResponse(
           content: '',
           success: false,
@@ -332,6 +354,7 @@ class UnifiedLLMClient {
           provider: 'Ollama',
         );
       } else {
+        print('[Ollama] Error response body: ${response.body}');
         return _parseErrorResponse('Ollama', response);
       }
     } on http.ClientException catch (e) {
@@ -355,7 +378,10 @@ class UnifiedLLMClient {
   
   static Future<LLMResponse> _sendLMStudio(LLMRequestConfig config, String prompt) async {
     try {
-      final url = config.baseUrl ?? 'http://localhost:1234';
+      var url = config.baseUrl ?? 'http://localhost:1234';
+      if (!url.endsWith('/v1')) {
+        url = '$url/v1';
+      }
       
       final messages = <Map<String, String>>[];
       if (config.systemPrompt != null) {
@@ -364,7 +390,7 @@ class UnifiedLLMClient {
       messages.add({'role': 'user', 'content': prompt});
       
       final response = await http.post(
-        Uri.parse('$url/v1/chat/completions'),
+        Uri.parse('$url/chat/completions'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'model': config.modelName,

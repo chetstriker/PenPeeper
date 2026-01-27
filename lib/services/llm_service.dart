@@ -1,17 +1,24 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:penpeeper/models/llm_provider.dart';
 import 'package:penpeeper/models/llm_settings.dart';
 
 class LLMService {
   Future<String> testConnection(LLMSettings settings) async {
+    debugPrint('[LLM] Testing connection to ${settings.provider.displayName}');
+    debugPrint('[LLM] Base URL: ${settings.baseUrl}');
+    debugPrint('[LLM] Model: ${settings.modelName}');
     try {
       final response = await _sendMessage(
         settings,
         'What is your LLM name and version? Please respond concisely.',
       );
+      debugPrint('[LLM] Test successful');
       return response;
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[LLM] Test failed: $e');
+      debugPrint('[LLM] Stack trace: $stack');
       rethrow;
     }
   }
@@ -41,9 +48,12 @@ class LLMService {
 
   Future<String> _sendOllama(
       LLMSettings settings, String message, Duration timeout) async {
+    final url = '${settings.baseUrl}/api/generate';
+    debugPrint('[LLM] Ollama request to: $url');
+    
     final response = await http
         .post(
-          Uri.parse('${settings.baseUrl}/api/generate'),
+          Uri.parse(url),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'model': settings.modelName,
@@ -57,19 +67,25 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] Ollama response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+      debugPrint('[LLM] Ollama response keys: ${data.keys}');
       return data['response'] as String? ?? 'No response';
     } else {
+      debugPrint('[LLM] Ollama error body: ${response.body}');
       throw Exception('Ollama error: ${response.statusCode} - ${response.body}');
     }
   }
 
   Future<String> _sendLMStudio(
       LLMSettings settings, String message, Duration timeout) async {
+    final url = '${settings.baseUrl}/chat/completions';
+    debugPrint('[LLM] LM Studio request to: $url');
+    
     final response = await http
         .post(
-          Uri.parse('${settings.baseUrl}/chat/completions'),
+          Uri.parse(url),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'model': settings.modelName,
@@ -82,11 +98,26 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] LM Studio response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['choices'][0]['message']['content'] as String? ??
-          'No response';
+      debugPrint('[LLM] LM Studio response keys: ${data.keys}');
+      
+      if (data.containsKey('error')) {
+        final error = data['error'];
+        debugPrint('[LLM] LM Studio returned error: $error');
+        throw Exception('LM Studio error: $error');
+      }
+      
+      final choices = data['choices'] as List?;
+      if (choices != null && choices.isNotEmpty) {
+        debugPrint('[LLM] LM Studio choices count: ${choices.length}');
+        return choices[0]['message']['content'] as String? ?? 'No response';
+      }
+      debugPrint('[LLM] LM Studio: No choices in response');
+      throw Exception('LM Studio returned no choices in response');
     } else {
+      debugPrint('[LLM] LM Studio error body: ${response.body}');
       throw Exception(
           'LM Studio error: ${response.statusCode} - ${response.body}');
     }
@@ -94,6 +125,8 @@ class LLMService {
 
   Future<String> _sendClaude(
       LLMSettings settings, String message, Duration timeout) async {
+    debugPrint('[LLM] Claude request with model: ${settings.modelName}');
+    
     final response = await http
         .post(
           Uri.parse('https://api.anthropic.com/v1/messages'),
@@ -113,20 +146,25 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] Claude response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      final content = data['content'] as List;
-      if (content.isNotEmpty) {
+      debugPrint('[LLM] Claude response keys: ${data.keys}');
+      final content = data['content'] as List?;
+      if (content != null && content.isNotEmpty) {
         return content[0]['text'] as String? ?? 'No response';
       }
       return 'No response';
     } else {
+      debugPrint('[LLM] Claude error body: ${response.body}');
       throw Exception('Claude error: ${response.statusCode} - ${response.body}');
     }
   }
 
   Future<String> _sendChatGPT(
       LLMSettings settings, String message, Duration timeout) async {
+    debugPrint('[LLM] ChatGPT request with model: ${settings.modelName}');
+    
     final response = await http
         .post(
           Uri.parse('https://api.openai.com/v1/chat/completions'),
@@ -145,11 +183,18 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] ChatGPT response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['choices'][0]['message']['content'] as String? ??
-          'No response';
+      debugPrint('[LLM] ChatGPT response keys: ${data.keys}');
+      final choices = data['choices'] as List?;
+      if (choices != null && choices.isNotEmpty) {
+        return choices[0]['message']['content'] as String? ?? 'No response';
+      }
+      debugPrint('[LLM] ChatGPT: No choices in response');
+      return 'No response';
     } else {
+      debugPrint('[LLM] ChatGPT error body: ${response.body}');
       throw Exception(
           'ChatGPT error: ${response.statusCode} - ${response.body}');
     }
@@ -157,9 +202,12 @@ class LLMService {
 
   Future<String> _sendOpenRouter(
       LLMSettings settings, String message, Duration timeout) async {
+    final url = '${settings.baseUrl}/chat/completions';
+    debugPrint('[LLM] OpenRouter request to: $url');
+    
     final response = await http
         .post(
-          Uri.parse('${settings.baseUrl}/chat/completions'),
+          Uri.parse(url),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ${settings.apiKey ?? ''}',
@@ -175,11 +223,18 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] OpenRouter response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['choices'][0]['message']['content'] as String? ??
-          'No response';
+      debugPrint('[LLM] OpenRouter response keys: ${data.keys}');
+      final choices = data['choices'] as List?;
+      if (choices != null && choices.isNotEmpty) {
+        return choices[0]['message']['content'] as String? ?? 'No response';
+      }
+      debugPrint('[LLM] OpenRouter: No choices in response');
+      return 'No response';
     } else {
+      debugPrint('[LLM] OpenRouter error body: ${response.body}');
       throw Exception(
           'OpenRouter error: ${response.statusCode} - ${response.body}');
     }
@@ -189,6 +244,7 @@ class LLMService {
       LLMSettings settings, String message, Duration timeout) async {
     final url =
         'https://generativelanguage.googleapis.com/v1beta/models/${settings.modelName}:generateContent?key=${settings.apiKey}';
+    debugPrint('[LLM] Gemini request with model: ${settings.modelName}');
 
     final response = await http
         .post(
@@ -210,8 +266,10 @@ class LLMService {
         )
         .timeout(timeout);
 
+    debugPrint('[LLM] Gemini response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+      debugPrint('[LLM] Gemini response keys: ${data.keys}');
       final candidates = data['candidates'] as List?;
       if (candidates != null && candidates.isNotEmpty) {
         final content = candidates[0]['content'];
@@ -222,11 +280,13 @@ class LLMService {
       }
       return 'No response';
     } else {
+      debugPrint('[LLM] Gemini error body: ${response.body}');
       throw Exception('Gemini error: ${response.statusCode} - ${response.body}');
     }
   }
 
   Future<List<String>> fetchAvailableModels(LLMSettings settings) async {
+    debugPrint('[LLM] Fetching models for ${settings.provider.displayName}');
     try {
       switch (settings.provider) {
         case LLMProvider.none:
@@ -247,6 +307,7 @@ class LLMService {
           return [];
       }
     } catch (e) {
+      debugPrint('[LLM] Failed to fetch models: $e, using fallback');
       return _getFallbackModels(settings.provider);
     }
   }
@@ -263,10 +324,13 @@ class LLMService {
 
   Future<List<String>> _fetchLMStudioModels(LLMSettings settings) async {
     final response = await http.get(Uri.parse('${settings.baseUrl}/models'));
+    debugPrint('[LLM] LM Studio models response: ${response.statusCode}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final models = data['data'] as List?;
-      return models?.map((m) => m['id'] as String).toList() ?? [];
+      final modelList = models?.map((m) => m['id'] as String).toList() ?? [];
+      debugPrint('[LLM] LM Studio found ${modelList.length} models');
+      return modelList;
     }
     return [];
   }
