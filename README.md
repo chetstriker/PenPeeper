@@ -81,6 +81,10 @@ No more juggling multiple tools, manually parsing scan outputs, or wrestling wit
 
 ## 🛠️ How to Use
 
+[![PenPeeper Tutorial](https://img.youtube.com/vi/KA0P8wr5v1o/0.jpg)](https://www.youtube.com/watch?v=KA0P8wr5v1o)
+
+*Click the image above to watch the tutorial on how to use PenPeeper.*
+
 ### If you want to run on Linux without a desktop then run the command:
    ```bash
    ./penpeeper --term
