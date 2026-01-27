@@ -126,3 +126,8 @@ Contributions, issues, and feature requests are welcome!
 
 ### brand icons
 ### [Brand icons created by Pixel perfect - Flaticon](https://www.flaticon.com/free-icons/brand)
+
+## 🔎 Keywords
+pentesting, penetration testing, cybersecurity, infosec, ethical hacking, 
+AI security, vulnerability management, pentest reporting, LLM integration, 
+open-source security tools
